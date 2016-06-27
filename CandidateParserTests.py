@@ -6,6 +6,21 @@ from CandidateParser import CandidateParser
 
 class CandidateParserTests(unittest.TestCase):
 
+    def testStageConfigParser(self):
+        header = "Stage,Bucket\n"
+        f = StringIO.StringIO(header + "1. do something,stage_1\n" \
+                                    + "1 - do something,stage_1\n" \
+                                    + "2 - something else,stage_2\n"\
+                                    + "2:something else,stage_2\n" \
+                                    + "nothing to match,\n")
+        reader = csv.reader(f)
+        p = CandidateParser()
+
+        stage_config = p.parseStageConfig(reader)
+
+        self.assertEqual(stage_config, {"stage_1": ["1. do something", "1 - do something"],
+                                        "stage_2": ["2 - something else", "2:something else"]})
+
     def testSingleCandidateSingleStage(self):
 
         header = "Candidate ID,Candidate Name,Candidate Email,Candidate Phone,Opening ID,Opening,Stage,Decision Status," \

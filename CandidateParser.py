@@ -56,26 +56,31 @@ class CandidateParser:
                 count_per_month[month].append(candidate["name"])
         return data_per_month
 
-    def parseFileStages(self):
+    def generateReport(self, data_per_month):
+        orderedOffers = collections.OrderedDict(sorted(data_per_month["case_studies"].items()))
+        report = "month, phone_interviews, competency, case_studies, offers\n"
+        for month, offerOwners in orderedOffers.iteritems():
+            report = report + month + ", " \
+                     + str(len(data_per_month["phone_interviews"].get(month, ""))) + ", " \
+                     + str(len(data_per_month["competency"].get(month, ""))) + ", " \
+                     + str(len(data_per_month["case_studies"].get(month, ""))) + ", " \
+                     + str(len(data_per_month["offers"].get(month, ""))) + ", " \
+                     + str(offerOwners) + "\n"
 
-        data = {}
-        # with open('data/sample.csv', 'rUb') as csvFile:
-        with open('data/data-20-06-2016.csv', 'rUb') as csvFile:
-            reader = csv.reader(csvFile)
+        print report
+        return report
 
-            data = self.parseReaderStages(reader)
-
+    def countStageOccurrencesByMonth(self, data, stage_config):
         data_per_month = {}
-
         for key, candidate in data.iteritems():
             for stage in candidate["stages"]:
                 data_per_month = self.stage_count_per_month(
                     data_per_month, "phone_interviews", ["Phone Interview", "Phone screen",
-                                                 "Phone or Video screen", "4. Telephonic Screening"]
+                                                         "Phone or Video screen", "4. Telephonic Screening"]
                     , candidate, stage)
 
                 data_per_month = self.stage_count_per_month(
-                    data_per_month,"case_studies", ["Case Study"]
+                    data_per_month, "case_studies", ["Case Study"]
                     , candidate, stage)
 
                 data_per_month = self.stage_count_per_month(
@@ -84,34 +89,68 @@ class CandidateParser:
 
                 data_per_month = self.stage_count_per_month(
                     data_per_month, "competency", ["1st Interview - CV, Cultural Fit & Aptitude",
-                                               "1st Interview- Background Interview",
-                                               "1st Interview-Aptitude&BA test",
-                                               "2nd Interview - Competency",
-                                               "2nd Interview- Competency Assessment",
-                                               "BG\CF Int",
-                                               "Background/Experience/Fit",
-                                               "Competency",
-                                               "Competency Assessment",
-                                               "Competency Interview & Aptitude Test",
-                                               "Competency\Background Int & Aptitude"]
+                                                   "1st Interview- Background Interview",
+                                                   "1st Interview-Aptitude&BA test",
+                                                   "2nd Interview - Competency",
+                                                   "2nd Interview- Competency Assessment",
+                                                   "BG\CF Int",
+                                                   "Background/Experience/Fit",
+                                                   "Competency",
+                                                   "Competency Assessment",
+                                                   "Competency Interview & Aptitude Test",
+                                                   "Competency\Background Int & Aptitude"]
                     , candidate, stage)
+        return data_per_month
 
-        print "Phone Interviews Per Month"
-        orderedOffers = collections.OrderedDict(sorted(data_per_month["case_studies "].items()))
-        report = "month, phone_interviews, competency, case_studies, offers\n"
-        for month, offerOwners in orderedOffers.iteritems():
-            report = report + month + ", " \
-                  + str(len(data_per_month["phone_interviews"].get(month, ""))) + ", " \
-                  + str(len(data_per_month["competency"].get(month, ""))) + ", " \
-                  + str(len(data_per_month["case_studies"].get(month, ""))) + ", " \
-                  + str(len(data_per_month["offers"].get(month, ""))) + ", " \
-                  + str(offerOwners) + "\n"
+    def parseFileStages(self):
 
-        return data, report
+        data = {}
+        stage_config = {}
+
+        # with open('data/sample.csv', 'rUb') as csvFile:
+        with open('data/data-20-06-2016.csv', 'rUb') as csvFile:
+            reader = csv.reader(csvFile)
+            data = self.parseReaderStages(reader)
+
+        with open("data/stage-config.csv", 'rUb') as configFile:
+            reader = csv.reader(configFile)
+            stage_config = self.parseStageConfig(reader)
+
+        stage_config = {}
+
+        data_per_month = self.countStageOccurrencesByMonth(data, stage_config)
+
+        return data_per_month
+
+    def parseStageConfig(self, config_reader):
+        next(config_reader, None)
+        stage_config = {}
+        for row in config_reader:
+            try:
+                stage_bucket = stage_config[row[1]]
+            except KeyError:
+                if row[1]:
+                    stage_config[row[1]] = []
+            if row[1]:
+                stage_config[row[1]].append(row[0])
+
+            # month = stage["change-date"][0:7]
+            # try:
+            #     people = count_per_month[month]
+            # except KeyError:
+            #     count_per_month[month] = []
+            #
+            # if candidate["name"] not in count_per_month[month]:
+            #     count_per_month[month].append(candidate["name"])
+            #
+
+
+        return stage_config
 
 def main():
     parser = CandidateParser()
-    data, report = parser.parseFileStages()
+    data_per_month = parser.parseFileStages()
+    report = parser.generateReport(data_per_month)
 
     f = open("report.csv", "w")
     f.write(report)
